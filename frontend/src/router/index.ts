@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AuthForm from '@/components/auth/AuthForm.vue'
-import { AuthFormType } from '@/types/auth.js'
+import { AuthFormType } from '@/types/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),

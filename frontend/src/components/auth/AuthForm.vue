@@ -181,29 +181,27 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useForm, useField } from 'vee-validate'
 import * as yup from 'yup'
 import { Icon } from '@iconify/vue'
-import { AuthFormType } from '@/types/auth.js'
+import { AuthFormType, type LoginData, type RegisterData } from '@/types/auth'
 
-const props = defineProps({
-  formType: {
-    type: String,
-    required: true,
-    validator: (value) => Object.values(AuthFormType).includes(value)
-  }
-})
+interface Props {
+  formType: AuthFormType
+}
+
+const props = defineProps<Props>()
 
 const isLogin = computed(() => props.formType === AuthFormType.LOGIN)
-const isSubmitting = ref(false)
-const showPassword = ref(false)
-const showConfirmPassword = ref(false)
+const isSubmitting = ref<boolean>(false)
+const showPassword = ref<boolean>(false)
+const showConfirmPassword = ref<boolean>(false)
 
 // Define validation schema with yup
 const validationSchema = computed(() => {
-  const baseSchema = {
+  const baseSchema: any = {
     email: yup.string()
       .required('Email is required')
       .test('email-format', 'Please enter a valid email address', (value) => {
@@ -232,7 +230,7 @@ const validationSchema = computed(() => {
         
         // Check domain has valid TLD
         const tld = domain.split('.').pop()
-        if (tld.length < 2) {
+        if (!tld || tld.length < 2) {
           return false
         }
         
@@ -315,18 +313,21 @@ const isFormValid = computed(() => {
          !confirmPasswordError.value
 })
 
-const onSubmit = handleSubmit(async (values) => {
+const onSubmit = handleSubmit(async (values: any) => {
   isSubmitting.value = true
   
   try {
-    const formData = isLogin.value 
-      ? { email: values.email, password: values.password }
+    const formData: LoginData | RegisterData = isLogin.value 
+      ? { 
+          email: values.email, 
+          password: values.password 
+        } as LoginData
       : { 
           name: values.name, 
           email: values.email, 
           password: values.password,
           confirmPassword: values.confirmPassword
-        }
+        } as RegisterData
     
     console.log(`${isLogin.value ? 'Login' : 'Registration'} attempt:`, formData)
     // TODO: Implement actual API calls here
