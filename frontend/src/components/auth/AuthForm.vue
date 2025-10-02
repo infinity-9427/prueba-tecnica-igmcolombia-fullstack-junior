@@ -329,7 +329,6 @@ const onSubmit = handleSubmit(async (values: any) => {
           confirmPassword: values.confirmPassword
         } as RegisterData
     
-    console.log(`${isLogin.value ? 'Login' : 'Registration'} attempt:`, formData)
     // TODO: Implement actual API calls here
   } finally {
     isSubmitting.value = false
