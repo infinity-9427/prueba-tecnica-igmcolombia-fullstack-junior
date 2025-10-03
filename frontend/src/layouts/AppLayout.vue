@@ -1,23 +1,24 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-white shadow-sm border-b border-gray-200">
+    <!-- Navigation Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <!-- Logo and main navigation -->
-          <div class="flex">
+        <div class="flex justify-between items-center h-16">
+          <!-- Logo and Brand -->
+          <div class="flex items-center">
             <div class="flex-shrink-0 flex items-center">
               <Icon icon="mdi:receipt" class="h-8 w-8 text-blue-600" />
-              <span class="ml-2 text-xl font-bold text-gray-900">Invoice App</span>
+              <span class="ml-2 text-xl font-bold text-gray-900 hidden sm:block">Invoice App</span>
+              <span class="ml-2 text-lg font-bold text-gray-900 sm:hidden">IA</span>
             </div>
             
-            <!-- Main navigation -->
-            <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+            <!-- Desktop Navigation -->
+            <nav class="hidden md:ml-8 md:flex md:space-x-8" v-if="isAuthenticated">
               <router-link
-                v-for="item in navigation"
+                v-for="item in visibleNavigation"
                 :key="item.name"
                 :to="item.href"
-                class="inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors"
+                class="inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors duration-200"
                 :class="isCurrentRoute(item.href) 
                   ? 'border-blue-500 text-gray-900' 
                   : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
@@ -25,84 +26,175 @@
                 <Icon :icon="item.icon" class="w-4 h-4 mr-2" />
                 {{ item.name }}
               </router-link>
-            </div>
+            </nav>
           </div>
 
-          <!-- User menu -->
-          <div class="flex items-center">
-            <div class="relative">
-              <button
-                @click="showUserMenu = !showUserMenu"
-                class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <div class="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-                  <Icon icon="mdi:account" class="h-5 w-5 text-white" />
-                </div>
-                <span class="ml-2 text-gray-700">Admin User</span>
-                <Icon icon="mdi:chevron-down" class="ml-1 h-4 w-4 text-gray-500" />
-              </button>
+          <!-- Right side content -->
+          <div class="flex items-center space-x-4">
+            <!-- Loading indicator -->
+            <div v-if="loading" class="flex items-center">
+              <Icon icon="mdi:loading" class="h-5 w-5 text-blue-600 animate-spin" />
+            </div>
 
-              <!-- User dropdown -->
-              <div
-                v-if="showUserMenu"
-                v-click-outside="() => showUserMenu = false"
-                class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50"
-              >
-                <div class="py-1">
-                  <a
-                    href="#"
-                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    <Icon icon="mdi:account-cog" class="w-4 h-4 mr-2 inline" />
-                    Profile Settings
-                  </a>
-                  <button
-                    @click="logout"
-                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                  >
-                    <Icon icon="mdi:logout" class="w-4 h-4 mr-2 inline" />
-                    Sign Out
-                  </button>
-                </div>
+            <!-- Authenticated User Menu -->
+            <div v-if="isAuthenticated" class="relative">
+              <!-- Desktop User Menu -->
+              <div class="hidden sm:flex items-center">
+                <Button
+                  @click="toggleUserMenu"
+                  variant="text"
+                  class="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                >
+                  <div class="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                    <Icon icon="mdi:account" class="h-5 w-5 text-white" />
+                  </div>
+                  <div class="flex flex-col items-start">
+                    <span class="text-sm font-medium text-gray-900">{{ currentUser?.name || 'User' }}</span>
+                    <span class="text-xs text-gray-500 capitalize">{{ userRole }}</span>
+                  </div>
+                  <Icon icon="mdi:chevron-down" class="h-4 w-4 text-gray-500 transition-transform duration-200" 
+                        :class="{ 'rotate-180': showUserMenu }" />
+                </Button>
               </div>
+
+              <!-- Mobile User Avatar -->
+              <div class="sm:hidden">
+                <Button
+                  @click="toggleUserMenu"
+                  variant="text"
+                  class="flex items-center p-2 rounded-lg hover:bg-gray-100"
+                >
+                  <div class="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                    <Icon icon="mdi:account" class="h-5 w-5 text-white" />
+                  </div>
+                </Button>
+              </div>
+
+              <!-- User Dropdown Menu -->
+              <Transition
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="transform opacity-0 scale-95"
+                enter-to-class="transform opacity-100 scale-100"
+                leave-active-class="transition ease-in duration-75"
+                leave-from-class="transform opacity-100 scale-100"
+                leave-to-class="transform opacity-0 scale-95"
+              >
+                <div
+                  v-if="showUserMenu"
+                  v-click-outside="closeUserMenu"
+                  class="absolute right-0 mt-2 w-64 sm:w-72 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50"
+                >
+                  <!-- User Info Header -->
+                  <div class="px-4 py-3 border-b border-gray-100">
+                    <div class="flex items-center space-x-3">
+                      <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                        <Icon icon="mdi:account" class="h-6 w-6 text-white" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">
+                          {{ currentUser?.name || 'User' }}
+                        </p>
+                        <p class="text-sm text-gray-500 truncate">
+                          {{ currentUser?.email || 'user@example.com' }}
+                        </p>
+                        <p class="text-xs text-blue-600 capitalize font-medium">
+                          {{ userRole }} Account
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Menu Items -->
+                  <div class="py-1">
+                    <button
+                      @click="handleProfile"
+                      class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+                    >
+                      <Icon icon="mdi:account-cog" class="w-4 h-4 mr-3 text-gray-400" />
+                      Profile Settings
+                    </button>
+                    
+                    <button
+                      v-if="canManageAll"
+                      @click="handleAdmin"
+                      class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
+                    >
+                      <Icon icon="mdi:shield-account" class="w-4 h-4 mr-3 text-gray-400" />
+                      Admin Panel
+                    </button>
+
+                    <div class="border-t border-gray-100 my-1"></div>
+                    
+                    <button
+                      @click="handleLogout"
+                      class="w-full flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors duration-150"
+                    >
+                      <Icon icon="mdi:logout" class="w-4 h-4 mr-3 text-red-500" />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+
+            <!-- Unauthenticated State -->
+            <div v-else class="flex items-center space-x-3">
+              <span class="text-sm text-gray-500 hidden sm:block">Not authenticated</span>
+              <router-link
+                to="/login"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+              >
+                <Icon icon="mdi:login" class="w-4 h-4 mr-2" />
+                Sign In
+              </router-link>
+            </div>
+
+            <!-- Mobile menu button -->
+            <div class="md:hidden" v-if="isAuthenticated">
+              <Button
+                @click="toggleMobileMenu"
+                variant="text"
+                class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              >
+                <Icon :icon="showMobileMenu ? 'mdi:close' : 'mdi:menu'" class="h-6 w-6" />
+              </Button>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Mobile menu button -->
-          <div class="sm:hidden flex items-center">
-            <button
-              @click="showMobileMenu = !showMobileMenu"
-              class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+      <!-- Mobile Navigation Menu -->
+      <Transition
+        enter-active-class="transition ease-out duration-200"
+        enter-from-class="transform -translate-y-2 opacity-0"
+        enter-to-class="transform translate-y-0 opacity-100"
+        leave-active-class="transition ease-in duration-150"
+        leave-from-class="transform translate-y-0 opacity-100"
+        leave-to-class="transform -translate-y-2 opacity-0"
+      >
+        <div v-if="showMobileMenu && isAuthenticated" class="md:hidden border-t border-gray-200 bg-white">
+          <div class="px-2 pt-2 pb-3 space-y-1">
+            <router-link
+              v-for="item in visibleNavigation"
+              :key="item.name"
+              :to="item.href"
+              @click="closeMobileMenu"
+              class="flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
+              :class="isCurrentRoute(item.href)
+                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
             >
-              <Icon :icon="showMobileMenu ? 'mdi:close' : 'mdi:menu'" class="h-6 w-6" />
-            </button>
+              <Icon :icon="item.icon" class="w-5 h-5 mr-3" />
+              {{ item.name }}
+            </router-link>
           </div>
         </div>
-      </div>
-
-      <!-- Mobile menu -->
-      <div v-if="showMobileMenu" class="sm:hidden border-t border-gray-200">
-        <div class="pt-2 pb-3 space-y-1">
-          <router-link
-            v-for="item in navigation"
-            :key="item.name"
-            :to="item.href"
-            @click="showMobileMenu = false"
-            class="flex items-center pl-3 pr-4 py-2 text-base font-medium transition-colors"
-            :class="isCurrentRoute(item.href)
-              ? 'bg-blue-50 border-blue-500 text-blue-700 border-l-4'
-              : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-800'"
-          >
-            <Icon :icon="item.icon" class="w-5 h-5 mr-3" />
-            {{ item.name }}
-          </router-link>
-        </div>
-      </div>
-    </nav>
+      </Transition>
+    </header>
 
     <!-- Main content -->
     <main class="flex-1">
-      <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <router-view />
       </div>
     </main>

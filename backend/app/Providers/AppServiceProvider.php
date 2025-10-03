@@ -2,6 +2,12 @@
 
 namespace App\Providers;
 
+use App\Interfaces\ClientServiceInterface;
+use App\Interfaces\InvoiceServiceInterface;
+use App\Interfaces\UserServiceInterface;
+use App\Services\ClientService;
+use App\Services\InvoiceService;
+use App\Services\UserService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -11,7 +17,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(ClientServiceInterface::class, ClientService::class);
+        $this->app->bind(InvoiceServiceInterface::class, InvoiceService::class);
+        $this->app->bind(UserServiceInterface::class, UserService::class);
     }
 
     /**
