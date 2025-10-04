@@ -3,11 +3,12 @@
 namespace App\Interfaces;
 
 use App\Models\Invoice;
+use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface InvoiceServiceInterface
 {
-    public function getAllInvoices(array $filters = [], int $perPage = 15): LengthAwarePaginator;
+    public function getAllInvoices(array $filters = [], int $perPage = 15, ?User $user = null): LengthAwarePaginator;
     
     public function getInvoiceById(int $id): ?Invoice;
     

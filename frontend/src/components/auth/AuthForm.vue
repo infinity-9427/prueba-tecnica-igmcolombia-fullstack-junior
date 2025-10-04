@@ -144,6 +144,36 @@
             </p>
           </div>
 
+          <!-- Role Field (Register only) -->
+          <div v-if="!isLogin" class="space-y-2">
+            <label for="role" class="block text-sm font-medium text-gray-700">
+              Account Type
+            </label>
+            <div class="relative">
+              <select
+                v-model="role"
+                id="role"
+                name="role"
+                class="block w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 transition-colors appearance-none"
+                :class="{ 
+                  'border-red-300 focus:border-red-500': roleError,
+                  'border-green-300 focus:border-green-500': role && !roleError
+                }"
+              >
+                <option value="">Select account type</option>
+                <option value="admin">Administrator</option>
+                <option value="user">Client</option>
+              </select>
+              <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <Icon icon="mdi:chevron-down" class="h-5 w-5 text-gray-400" />
+              </div>
+            </div>
+            <p v-if="roleError" class="text-sm text-red-600 flex items-center gap-1">
+              <Icon icon="mdi:alert-circle" class="h-4 w-4" />
+              {{ roleError }}
+            </p>
+          </div>
+
           <!-- Submit Button -->
           <button
             type="submit"
@@ -186,7 +216,7 @@ import { computed, ref, watch } from 'vue'
 import { useForm, useField } from 'vee-validate'
 import * as yup from 'yup'
 import { Icon } from '@iconify/vue'
-import { AuthFormType, type LoginData, type RegisterData } from '@/types/auth'
+import { AuthFormType, type LoginData, type RegisterData, UserRole } from '@/types/auth'
 
 interface Props {
   formType: AuthFormType
@@ -249,6 +279,9 @@ const validationSchema = computed(() => {
     baseSchema.confirmPassword = yup.string()
       .required('Please confirm your password')
       .oneOf([yup.ref('password')], 'Passwords must match')
+    baseSchema.role = yup.string()
+      .required('Account type is required')
+      .oneOf(['admin', 'user'], 'Please select a valid account type')
   }
   
   return yup.object(baseSchema)
@@ -262,6 +295,7 @@ const { value: name } = useField('name')
 const { value: email } = useField('email') 
 const { value: password } = useField('password')
 const { value: confirmPassword } = useField('confirmPassword')
+const { value: role } = useField('role')
 
 // Reset form when switching between login/register
 watch(() => props.formType, (newType, oldType) => {
@@ -276,7 +310,8 @@ watch(() => props.formType, (newType, oldType) => {
         name: '',
         email: '',
         password: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        role: ''
       },
       errors: {}, // Clear all errors
       touched: {} // Clear all touched states
@@ -288,6 +323,7 @@ const nameError = computed(() => errors.value.name)
 const emailError = computed(() => errors.value.email)
 const passwordError = computed(() => errors.value.password)
 const confirmPasswordError = computed(() => errors.value.confirmPassword)
+const roleError = computed(() => errors.value.role)
 
 // Check if form is valid for submit button state
 const isFormValid = computed(() => {
@@ -307,10 +343,12 @@ const isFormValid = computed(() => {
          email.value && 
          password.value && 
          confirmPassword.value &&
+         role.value &&
          !nameError.value &&
          !emailError.value && 
          !passwordError.value && 
-         !confirmPasswordError.value
+         !confirmPasswordError.value &&
+         !roleError.value
 })
 
 const onSubmit = handleSubmit(async (values: any) => {
@@ -326,7 +364,8 @@ const onSubmit = handleSubmit(async (values: any) => {
           name: values.name, 
           email: values.email, 
           password: values.password,
-          confirmPassword: values.confirmPassword
+          confirmPassword: values.confirmPassword,
+          role: values.role
         } as RegisterData
     
     // TODO: Implement actual API calls here

@@ -8,7 +8,6 @@ import {
   type UserFilters,
   type RoleUpdateData 
 } from '@/services/userService'
-import type { PaginatedResponse } from '@/services/invoiceService'
 
 export function useUsers() {
   const userStore = useUserStore()

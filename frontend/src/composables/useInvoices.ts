@@ -5,7 +5,6 @@ import {
   type Invoice, 
   type CreateInvoiceData, 
   type InvoiceFilters,
-  type PaginatedResponse 
 } from '@/services/invoiceService'
 
 export function useInvoices() {

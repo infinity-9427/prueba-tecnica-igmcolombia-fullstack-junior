@@ -17,10 +17,17 @@ class UserController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $perPage = $request->get('per_page', 15);
-        $users = $this->userService->getAllUsers($perPage);
+        try {
+            $perPage = $request->get('per_page', 15);
+            $users = $this->userService->getAllUsers($perPage);
 
-        return response()->json($users);
+            return response()->json($users);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to retrieve users',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function store(StoreUserRequest $request): JsonResponse
@@ -43,17 +50,24 @@ class UserController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $user = $this->userService->getUserById($id);
+        try {
+            $user = $this->userService->getUserById($id);
 
-        if (!$user) {
+            if (!$user) {
+                return response()->json([
+                    'message' => 'User not found'
+                ], 404);
+            }
+
             return response()->json([
-                'message' => 'User not found'
-            ], 404);
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to retrieve user',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'user' => $user
-        ]);
     }
 
     public function update(UpdateUserRequest $request, int $id): JsonResponse
@@ -82,17 +96,24 @@ class UserController extends Controller
 
     public function destroy(int $id): JsonResponse
     {
-        $deleted = $this->userService->deleteUser($id);
+        try {
+            $deleted = $this->userService->deleteUser($id);
 
-        if (!$deleted) {
+            if (!$deleted) {
+                return response()->json([
+                    'message' => 'User not found or cannot be deleted'
+                ], 404);
+            }
+
             return response()->json([
-                'message' => 'User not found or cannot be deleted'
-            ], 404);
+                'message' => 'User deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to delete user',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'message' => 'User deleted successfully'
-        ]);
     }
 
     public function updateRole(UpdateUserRoleRequest $request, int $id): JsonResponse

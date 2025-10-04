@@ -15,9 +15,14 @@ class InvoiceService implements InvoiceServiceInterface
     public function __construct(
         private CacheService $cacheService
     ) {}
-    public function getAllInvoices(array $filters = [], int $perPage = 15): LengthAwarePaginator
+    public function getAllInvoices(array $filters = [], int $perPage = 15, ?\App\Models\User $user = null): LengthAwarePaginator
     {
         $query = Invoice::with(['client', 'user', 'items']);
+
+        // Role-based filtering: regular users can only see their own invoices
+        if ($user && !$user->isAdmin()) {
+            $query->where('user_id', $user->id);
+        }
 
         if (isset($filters['client_id'])) {
             $query->where('client_id', $filters['client_id']);

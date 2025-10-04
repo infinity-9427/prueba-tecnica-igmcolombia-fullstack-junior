@@ -13,4 +13,10 @@ export interface RegisterData {
   email: string
   password: string
   confirmPassword: string
+  role: string
+}
+
+export enum UserRole {
+  ADMIN = 'admin',
+  USER = 'user'
 }

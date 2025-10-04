@@ -1,24 +1,17 @@
-FROM php:8.2-fpm AS builder
+FROM php:8.3-fpm AS builder
 
-# Configure apt with timeouts and minimal downloads
-RUN echo 'Acquire::http::Timeout "600";' > /etc/apt/apt.conf.d/99timeout && \
-    echo 'Acquire::Retries "5";' >> /etc/apt/apt.conf.d/99timeout
-
-# Install build dependencies and PHP extensions in one layer
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install --no-install-recommends -y \
     git \
-    curl \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
     libpq-dev \
     libzip-dev \
-    zip \
-    unzip \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    zip \   
+    unzip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions with retry logic
 RUN docker-php-ext-install -j$(nproc) \
     pdo \
     pdo_pgsql \
@@ -29,19 +22,10 @@ RUN docker-php-ext-install -j$(nproc) \
     gd \
     zip
 
-# Get Composer with retry logic
-COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
-
-# Configure Composer for better performance
-RUN composer config --global process-timeout 600 && \
-    composer config --global cache-dir /tmp/composer-cache
+COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
-
-# Copy composer files first for better layer caching
 COPY composer.json composer.lock ./
-
-# Install dependencies with retry logic and optimization
 RUN composer install \
     --no-dev \
     --no-scripts \
@@ -49,116 +33,47 @@ RUN composer install \
     --optimize-autoloader \
     --prefer-dist \
     --no-progress \
-    --no-suggest \
-    --classmap-authoritative || \
-    (sleep 30 && composer install \
-    --no-dev \
-    --no-scripts \
-    --no-autoloader \
-    --optimize-autoloader \
-    --prefer-dist \
-    --no-progress \
-    --no-suggest \
-    --classmap-authoritative) || \
-    (sleep 60 && composer install \
-    --no-dev \
-    --no-scripts \
-    --no-autoloader \
-    --optimize-autoloader \
-    --prefer-dist \
-    --no-progress \
-    --no-suggest \
-    --classmap-authoritative)
+    --classmap-authoritative
 
-# Production stage
-FROM php:8.2-fpm AS production
+FROM php:8.3-fpm AS production
 
-# Install runtime and build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install --no-install-recommends -y \
     libpq5 \
     libpng16-16t64 \
     libzip5 \
-    postgresql-client \
-    curl \
-    libpq-dev \
-    libpng-dev \
-    libzip-dev \
-    libonig-dev \
-    libxml2-dev \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    postgresql-client && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
-RUN docker-php-ext-install -j$(nproc) \
-    pdo \
-    pdo_pgsql \
-    mbstring \
-    exif \
-    pcntl \
-    bcmath \
-    gd \
-    zip
+COPY --from=builder /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --from=builder /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 
-# Clean up development packages
-RUN apt-get purge -y --auto-remove \
-    libpq-dev \
-    libpng-dev \
-    libzip-dev \
-    libonig-dev \
-    libxml2-dev
-
-# Create non-root user
-RUN groupadd --gid 1000 appuser && \
-    useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser
-
-WORKDIR /var/www
-
-# Copy vendor from builder stage
-COPY --from=builder /var/www/vendor /var/www/vendor
-
-# Copy application code
-COPY --chown=appuser:appuser . .
-
-# Generate optimized autoloader
-COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
-RUN composer dump-autoload --optimize --classmap-authoritative --no-dev
-
-# Set proper permissions
-RUN chown -R appuser:appuser /var/www && \
-    chmod -R 755 /var/www/storage /var/www/bootstrap/cache
-
-# Create health check script
-RUN echo '#!/bin/bash\nif [ -f /var/www/artisan ]; then\n  php /var/www/artisan inspire > /dev/null 2>&1 || exit 1\nelse\n  exit 1\nfi' > /usr/local/bin/healthcheck.sh && \
-    chmod +x /usr/local/bin/healthcheck.sh
-
-# Add OPcache configuration
 RUN echo 'opcache.enable=1\n\
 opcache.revalidate_freq=0\n\
 opcache.validate_timestamps=0\n\
 opcache.max_accelerated_files=10000\n\
 opcache.memory_consumption=192\n\
-opcache.max_wasted_percentage=10\n\
-opcache.fast_shutdown=1' > /usr/local/etc/php/conf.d/opcache.ini
+opcache.max_wasted_percentage=10' > /usr/local/etc/php/conf.d/opcache.ini
 
-# Create entrypoint script
-RUN echo '#!/bin/bash\nset -e\n\n# Wait for database\nwhile ! pg_isready -h ${DB_HOST:-db} -p ${DB_PORT:-5432} -U ${DB_USERNAME:-postgres}; do\n  echo "Waiting for database..."\n  sleep 2\ndone\n\n# Run migrations if needed\nif [ "${AUTO_MIGRATE:-true}" = "true" ]; then\n  php artisan migrate --force\nfi\n\n# Cache configuration\nphp artisan config:cache\nphp artisan route:cache\nphp artisan view:cache\n\nexec "$@"' > /usr/local/bin/entrypoint.sh && \
+RUN apt-get update && apt-get install --no-install-recommends -y libfcgi-bin && rm -rf /var/lib/apt/lists/*
+
+RUN echo '#!/bin/bash\nCGI_PATH=/var/www/public/index.php\nSCRIPT_FILENAME=$CGI_PATH REQUEST_METHOD=GET REQUEST_URI=/ cgi-fcgi -bind -connect 127.0.0.1:9000' > /usr/local/bin/healthcheck.sh && \
+    chmod +x /usr/local/bin/healthcheck.sh
+
+RUN echo '#!/bin/bash\nset -euo pipefail\n\n# Colors for output\nRED="\\033[0;31m"\nGREEN="\\033[0;32m"\nYELLOW="\\033[1;33m"\nNC="\\033[0m" # No Color\n\n# Error handling function\nhandle_error() {\n  echo -e "${RED}❌ Error occurred in entrypoint script at line $1${NC}" >&2\n  echo -e "${RED}Command: $2${NC}" >&2\n  exit 1\n}\n\n# Set error trap\ntrap '\''handle_error $LINENO "$BASH_COMMAND"'\'' ERR\n\necho -e "${GREEN}🚀 Starting Laravel application...${NC}"\n\n# Wait for database with timeout\necho -e "${YELLOW}⏳ Waiting for database connection...${NC}"\nmax_attempts=30\nattempt=0\nwhile ! pg_isready -h ${DB_HOST:-db} -p ${DB_PORT:-5432} -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-invoice_db} -q; do\n  attempt=$((attempt + 1))\n  if [ $attempt -ge $max_attempts ]; then\n    echo -e "${RED}❌ Database connection timeout after ${max_attempts} attempts${NC}" >&2\n    exit 1\n  fi\n  echo -e "${YELLOW}Database not ready (attempt $attempt/$max_attempts), waiting...${NC}"\n  sleep 2\ndone\necho -e "${GREEN}✅ Database is ready!${NC}"\n\n# Run migrations if AUTO_MIGRATE is true\nif [ "${AUTO_MIGRATE:-true}" = "true" ]; then\n  echo -e "${YELLOW}🔄 Running database migrations...${NC}"\n  if php artisan migrate --force; then\n    echo -e "${GREEN}✅ Migrations completed successfully!${NC}"\n  else\n    echo -e "${RED}❌ Migration failed!${NC}" >&2\n    exit 1\n  fi\nelse\n  echo -e "${YELLOW}⏭️  Auto-migration disabled (AUTO_MIGRATE=false)${NC}"\nfi\n\n# Cache configuration for better performance\necho -e "${YELLOW}⚡ Optimizing Laravel configuration...${NC}"\nif php artisan config:cache && php artisan route:cache && php artisan view:cache; then\n  echo -e "${GREEN}✅ Configuration optimized successfully!${NC}"\nelse\n  echo -e "${YELLOW}⚠️  Configuration caching failed, continuing anyway...${NC}"\nfi\n\necho -e "${GREEN}🎉 Laravel application ready! Starting PHP-FPM...${NC}"\nexec "$@"' > /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh
 
+RUN useradd --create-home appuser
 USER appuser
 
-# Environment variables for optimization
-ENV PHP_OPCACHE_ENABLE=1 \
-    PHP_OPCACHE_REVALIDATE_FREQ=0 \
-    PHP_OPCACHE_VALIDATE_TIMESTAMPS=0 \
-    PHP_OPCACHE_MAX_ACCELERATED_FILES=10000 \
-    PHP_OPCACHE_MEMORY_CONSUMPTION=192 \
-    PHP_OPCACHE_MAX_WASTED_PERCENTAGE=10 \
-    COMPOSER_CACHE_DIR=/tmp/composer-cache
+WORKDIR /var/www
+
+COPY . .
+COPY --from=builder /var/www/vendor vendor
+
+ENV PHP_OPCACHE_ENABLE=1
 
 EXPOSE 9000
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD /usr/local/bin/healthcheck.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["php-fpm"]

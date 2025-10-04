@@ -15,9 +15,16 @@ class FileUploadController extends Controller
 
     public function uploadInvoiceAttachment(Request $request): JsonResponse
     {
-        $request->validate([
-            'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,gif,doc,docx', 'max:10240'], // 10MB max
-        ]);
+        try {
+            $request->validate([
+                'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,gif,doc,docx', 'max:10240'], // 10MB max
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        }
 
         try {
             $file = $request->file('file');
@@ -101,9 +108,16 @@ class FileUploadController extends Controller
 
     public function deleteInvoiceAttachment(Request $request): JsonResponse
     {
-        $request->validate([
-            'public_id' => ['required', 'string'],
-        ]);
+        try {
+            $request->validate([
+                'public_id' => ['required', 'string'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        }
 
         try {
             $publicId = $request->public_id;
@@ -143,12 +157,19 @@ class FileUploadController extends Controller
 
     public function getOptimizedFileUrl(Request $request): JsonResponse
     {
-        $request->validate([
-            'public_id' => ['required', 'string'],
-            'width' => ['nullable', 'integer', 'min:1', 'max:2000'],
-            'height' => ['nullable', 'integer', 'min:1', 'max:2000'],
-            'quality' => ['nullable', 'string', 'in:auto,best,good,eco,low'],
-        ]);
+        try {
+            $request->validate([
+                'public_id' => ['required', 'string'],
+                'width' => ['nullable', 'integer', 'min:1', 'max:2000'],
+                'height' => ['nullable', 'integer', 'min:1', 'max:2000'],
+                'quality' => ['nullable', 'string', 'in:auto,best,good,eco,low'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        }
 
         try {
             $transformations = [];

@@ -6,7 +6,6 @@ import {
   type CreateClientData, 
   type ClientFilters 
 } from '@/services/clientService'
-import type { PaginatedResponse } from '@/services/invoiceService'
 
 export function useClients() {
   const userStore = useUserStore()

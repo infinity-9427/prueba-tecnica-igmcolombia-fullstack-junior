@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -24,6 +25,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -46,6 +48,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => UserRole::class,
         ];
     }
 
@@ -59,15 +62,15 @@ class User extends Authenticatable
      */
     public function isAdmin(): bool
     {
-        return $this->hasRole('admin');
+        return $this->role === UserRole::ADMIN;
     }
 
     /**
-     * Check if user is a regular user
+     * Check if user is a regular user/client
      */
     public function isUser(): bool
     {
-        return $this->hasRole('user');
+        return $this->role === UserRole::USER;
     }
 
     /**
@@ -75,7 +78,7 @@ class User extends Authenticatable
      */
     public function canManageInvoices(): bool
     {
-        return $this->can('manage invoices');
+        return $this->role->canManageInvoices();
     }
 
     /**
@@ -83,7 +86,7 @@ class User extends Authenticatable
      */
     public function canManageClients(): bool
     {
-        return $this->can('manage clients');
+        return $this->role->canManageClients();
     }
 
     /**
@@ -91,6 +94,6 @@ class User extends Authenticatable
      */
     public function canManageUsers(): bool
     {
-        return $this->can('manage users');
+        return $this->role->canManageUsers();
     }
 }

@@ -109,24 +109,47 @@ git clone <repository-url>
 cd invoice-vue-laravel
 ```
 
-### **2. Setup Backend**
+### **2. Environment Setup**
+```bash
+# Copy environment file (it's already configured with defaults)
+cp .env.example .env
+
+# Or customize your environment
+nano .env
+```
+
+> **📝 Note**: The `.env` file contains all Docker configuration. You can modify ports, memory limits, database credentials, and other settings as needed.
+
+**Key Benefits:**
+- ✅ **Centralized configuration** - All settings in one place
+- ✅ **Environment-specific values** - Different configs for dev/staging/production
+- ✅ **No hardcoded values** - Easy to change ports, credentials, memory limits
+- ✅ **Default fallbacks** - Works without .env file using sensible defaults
+- ✅ **Security** - Sensitive values in .env file, not in repository
+
+### **3. Setup Backend**
 ```bash
 cd backend/
 
-# Start Docker services
-docker-compose up -d
+# Start Docker services (with automatic migrations)
+docker-compose up --build -d
 
-# Install dependencies & setup
-docker-compose exec app composer install
-docker-compose exec app php artisan key:generate
-docker-compose exec app php artisan migrate
+# The container will automatically:
+# - Wait for database connection
+# - Run migrations
+# - Cache configuration
+# - Start PHP-FPM
+
+# Optional: Seed sample data
 docker-compose exec app php artisan db:seed
 
 # Verify API health
 curl http://localhost:8000/api/health
 ```
 
-### **3. Setup Frontend**
+> **Note**: Migrations run automatically on container startup when `AUTO_MIGRATE=true` (default). This ensures the database is always ready without manual intervention.
+
+### **4. Setup Frontend**
 ```bash
 cd frontend/
 
@@ -137,7 +160,7 @@ pnpm install
 pnpm dev
 ```
 
-### **4. Access Applications**
+### **5. Access Applications**
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:8000/api
 - **Database**: localhost:5432 (postgres/secret)
@@ -354,10 +377,119 @@ pnpm test:e2e
 
 | Service | Description | Port |
 |---------|-------------|------|
-| **app** | Laravel application (PHP 8.2) | - |
+| **app** | Laravel application (PHP 8.3) | - |
 | **nginx** | Web server | 8000 |
-| **db** | PostgreSQL 12 | 5432 |
+| **db** | PostgreSQL 15 | 5432 |
 | **redis** | Cache & sessions | 6379 |
+
+### **🐳 Docker Optimizations**
+
+The Dockerfile has been optimized following modern best practices:
+
+#### **Multi-stage Build**
+- **Builder stage**: Installs dependencies and builds the application
+- **Production stage**: Creates minimal runtime image with only necessary components
+- **Size reduction**: ~60% smaller final image compared to single-stage builds
+
+#### **Security Enhancements**
+- ✅ **Non-root user**: Application runs as `appuser` for security
+- ✅ **Minimal attack surface**: Only runtime dependencies in final image
+- ✅ **Layer optimization**: Combined RUN commands reduce layers and vulnerabilities
+- ✅ **Latest base images**: PHP 8.3-fpm with security updates
+
+#### **Performance Features**
+- ✅ **OPcache enabled**: Pre-compiled PHP for faster execution
+- ✅ **Composer optimization**: `--classmap-authoritative` for production
+- ✅ **Layer caching**: Dependencies installed before copying source code
+- ✅ **Configuration caching**: Laravel config/routes/views cached on startup
+
+#### **Automatic Database Migrations**
+- ✅ **Smart startup**: Waits for database connectivity before starting
+- ✅ **Auto-migration**: Runs `php artisan migrate --force` when `AUTO_MIGRATE=true`
+- ✅ **Zero-downtime**: No manual intervention required for database setup
+- ✅ **Production-safe**: Can be disabled by setting `AUTO_MIGRATE=false`
+
+#### **Health Monitoring & Error Handling**
+- ✅ **FastCGI health check**: Monitors PHP-FPM process health
+- ✅ **Database connectivity**: Ensures database connection before app startup
+- ✅ **Connection timeout**: 60-second timeout with retry logic (30 attempts)
+- ✅ **Comprehensive error handling**: Trap-based error detection with line numbers
+- ✅ **Colored output**: Clear visual feedback for startup stages
+- ✅ **Graceful degradation**: Non-critical failures don't stop container startup
+- ✅ **Exit codes**: Proper exit codes for Docker health checks and monitoring
+
+### **Environment Variables**
+
+All Docker configuration is now managed through environment variables in the `.env` file:
+
+#### **🔧 Application Configuration**
+```bash
+APP_ENV=production              # Application environment
+APP_DEBUG=false                 # Debug mode (set to true for development)
+AUTO_MIGRATE=true              # Automatic database migrations on startup
+```
+
+#### **🗄️ Database Configuration**
+```bash
+# Connection Settings
+DB_CONNECTION=pgsql
+DB_HOST=db
+DB_PORT=5432
+DB_DATABASE=invoice_db
+DB_USERNAME=postgres
+DB_PASSWORD=secret
+
+# PostgreSQL Performance Tuning
+PG_MAX_CONNECTIONS=100
+PG_SHARED_BUFFERS=256MB
+PG_EFFECTIVE_CACHE_SIZE=1GB
+PG_MAINTENANCE_WORK_MEM=64MB
+```
+
+#### **⚡ Redis Configuration**
+```bash
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_MAXMEMORY=200mb
+REDIS_MAXMEMORY_POLICY=allkeys-lru
+```
+
+#### **🐳 Container Configuration**
+```bash
+# Ports
+NGINX_PORT=8000
+POSTGRES_PORT=5432
+REDIS_PORT=6379
+
+# Memory Limits
+LARAVEL_MEMORY_LIMIT=512M
+NGINX_MEMORY_LIMIT=128M
+POSTGRES_MEMORY_LIMIT=512M
+REDIS_MEMORY_LIMIT=256M
+
+# Container Names
+LARAVEL_CONTAINER_NAME=laravel_app
+NGINX_CONTAINER_NAME=laravel_nginx
+POSTGRES_CONTAINER_NAME=laravel_postgres
+REDIS_CONTAINER_NAME=laravel_redis
+```
+
+#### **🔍 Health Check Configuration**
+```bash
+# Intervals and timeouts for each service
+APP_HEALTHCHECK_INTERVAL=30s
+APP_HEALTHCHECK_TIMEOUT=10s
+DB_HEALTHCHECK_INTERVAL=10s
+REDIS_HEALTHCHECK_INTERVAL=10s
+```
+
+#### **🌐 Network Configuration**
+```bash
+DOCKER_NETWORK_NAME=laravel
+DOCKER_SUBNET=172.20.0.0/16
+```
+
+> **💡 Customization**: You can override any of these values in your `.env` file. All variables have sensible defaults if not specified.
 
 ---
 

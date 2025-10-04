@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: ./docker/php/Dockerfile
       target: production
-    container_name: laravel_app
+    container_name: ${LARAVEL_CONTAINER_NAME:-laravel_app}
     restart: unless-stopped
     working_dir: /var/www
     volumes:
@@ -19,36 +19,36 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - DB_CONNECTION=pgsql
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_DATABASE=invoice_db
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=secret
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - AUTO_MIGRATE=true
-      - APP_ENV=production
-      - APP_DEBUG=false
+      - DB_CONNECTION=${DB_CONNECTION:-pgsql}
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_DATABASE=${DB_DATABASE:-invoice_db}
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-secret}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - AUTO_MIGRATE=${AUTO_MIGRATE:-true}
+      - APP_ENV=${APP_ENV:-production}
+      - APP_DEBUG=${APP_DEBUG:-false}
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
-      interval: 30s
-      timeout: 10s
-      start_period: 40s
-      retries: 3
+      interval: ${APP_HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${APP_HEALTHCHECK_TIMEOUT:-10s}
+      start_period: ${APP_HEALTHCHECK_START_PERIOD:-40s}
+      retries: ${APP_HEALTHCHECK_RETRIES:-3}
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: ${LARAVEL_MEMORY_LIMIT:-512M}
         reservations:
-          memory: 256M
+          memory: ${LARAVEL_MEMORY_RESERVATION:-256M}
 
   nginx:
     image: nginx:1.25-alpine
-    container_name: laravel_nginx
+    container_name: ${NGINX_CONTAINER_NAME:-laravel_nginx}
     restart: unless-stopped
     ports:
-      - "8000:80"
+      - "${NGINX_PORT:-8000}:80"
     volumes:
       - ./:/var/www:ro
       - ./docker/nginx:/etc/nginx/conf.d:ro
@@ -60,62 +60,62 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
-      retries: 3
+      interval: ${NGINX_HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${NGINX_HEALTHCHECK_TIMEOUT:-10s}
+      start_period: ${NGINX_HEALTHCHECK_START_PERIOD:-30s}
+      retries: ${NGINX_HEALTHCHECK_RETRIES:-3}
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: ${NGINX_MEMORY_LIMIT:-128M}
         reservations:
-          memory: 64M
+          memory: ${NGINX_MEMORY_RESERVATION:-64M}
 
   db:
     image: postgres:15-alpine
-    container_name: laravel_postgres
+    container_name: ${POSTGRES_CONTAINER_NAME:-laravel_postgres}
     restart: unless-stopped
     environment:
-      POSTGRES_DB: invoice_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: secret
-      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      POSTGRES_DB: ${POSTGRES_DB:-invoice_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_INITDB_ARGS: "${POSTGRES_INITDB_ARGS:---auth-host=scram-sha-256}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - postgres_config:/etc/postgresql
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     networks:
       - laravel
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d invoice_db"]
-      interval: 10s
-      timeout: 5s
-      start_period: 30s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-invoice_db}"]
+      interval: ${DB_HEALTHCHECK_INTERVAL:-10s}
+      timeout: ${DB_HEALTHCHECK_TIMEOUT:-5s}
+      start_period: ${DB_HEALTHCHECK_START_PERIOD:-30s}
+      retries: ${DB_HEALTHCHECK_RETRIES:-5}
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: ${POSTGRES_MEMORY_LIMIT:-512M}
         reservations:
-          memory: 256M
+          memory: ${POSTGRES_MEMORY_RESERVATION:-256M}
     command: >
-      postgres -c shared_preload_libraries=pg_stat_statements
-               -c pg_stat_statements.track=all
-               -c max_connections=100
-               -c shared_buffers=256MB
-               -c effective_cache_size=1GB
-               -c maintenance_work_mem=64MB
-               -c checkpoint_completion_target=0.9
-               -c wal_buffers=16MB
-               -c default_statistics_target=100
+      postgres -c shared_preload_libraries=${PG_SHARED_PRELOAD_LIBRARIES:-pg_stat_statements}
+               -c pg_stat_statements.track=${PG_STAT_STATEMENTS_TRACK:-all}
+               -c max_connections=${PG_MAX_CONNECTIONS:-100}
+               -c shared_buffers=${PG_SHARED_BUFFERS:-256MB}
+               -c effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-1GB}
+               -c maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-64MB}
+               -c checkpoint_completion_target=${PG_CHECKPOINT_COMPLETION_TARGET:-0.9}
+               -c wal_buffers=${PG_WAL_BUFFERS:-16MB}
+               -c default_statistics_target=${PG_DEFAULT_STATISTICS_TARGET:-100}
 
   redis:
     image: redis:7.2-alpine
-    container_name: laravel_redis
+    container_name: ${REDIS_CONTAINER_NAME:-laravel_redis}
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     networks:
       - laravel
     volumes:
@@ -123,20 +123,20 @@ services:
       - redis_config:/usr/local/etc/redis
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      start_period: 30s
-      retries: 5
+      interval: ${REDIS_HEALTHCHECK_INTERVAL:-10s}
+      timeout: ${REDIS_HEALTHCHECK_TIMEOUT:-5s}
+      start_period: ${REDIS_HEALTHCHECK_START_PERIOD:-30s}
+      retries: ${REDIS_HEALTHCHECK_RETRIES:-5}
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: ${REDIS_MEMORY_LIMIT:-256M}
         reservations:
-          memory: 128M
+          memory: ${REDIS_MEMORY_RESERVATION:-128M}
     command: >
       redis-server --appendonly yes
-                   --maxmemory 200mb
-                   --maxmemory-policy allkeys-lru
+                   --maxmemory ${REDIS_MAXMEMORY:-200mb}
+                   --maxmemory-policy ${REDIS_MAXMEMORY_POLICY:-allkeys-lru}
                    --save 900 1
                    --save 300 10
                    --save 60 10000
@@ -160,4 +160,4 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: ${DOCKER_SUBNET:-172.20.0.0/16}

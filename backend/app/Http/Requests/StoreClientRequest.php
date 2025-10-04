@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-
-class StoreClientRequest extends FormRequest
+class StoreClientRequest extends BaseApiRequest
 {
     public function authorize(): bool
     {
@@ -17,8 +15,8 @@ class StoreClientRequest extends FormRequest
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'document_type' => ['required', 'string', 'in:cedula,pasaporte,nit'],
-            'document_number' => ['required', 'string', 'max:255', 'unique:clients'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:clients'],
+            'document_number' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20'],
         ];
     }
@@ -31,10 +29,8 @@ class StoreClientRequest extends FormRequest
             'document_type.required' => 'Document type is required',
             'document_type.in' => 'Document type must be cedula, pasaporte, or nit',
             'document_number.required' => 'Document number is required',
-            'document_number.unique' => 'Document number already exists',
             'email.required' => 'Email is required',
             'email.email' => 'Email must be a valid email address',
-            'email.unique' => 'Email already exists',
         ];
     }
 }

@@ -11,14 +11,30 @@ class ClientService implements ClientServiceInterface
 {
     public function getAllClients(int $perPage = 15): LengthAwarePaginator
     {
-        return Client::orderBy('first_name')
-            ->orderBy('last_name')
-            ->paginate($perPage);
+        try {
+            return Client::orderBy('first_name')
+                ->orderBy('last_name')
+                ->paginate($perPage);
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve clients', [
+                'error' => $e->getMessage(),
+                'per_page' => $perPage
+            ]);
+            throw $e;
+        }
     }
 
     public function getClientById(int $id): ?Client
     {
-        return Client::find($id);
+        try {
+            return Client::find($id);
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve client by ID', [
+                'client_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
     }
 
     public function createClient(array $data): Client
@@ -113,11 +129,27 @@ class ClientService implements ClientServiceInterface
 
     public function findClientByEmail(string $email): ?Client
     {
-        return Client::where('email', $email)->first();
+        try {
+            return Client::where('email', $email)->first();
+        } catch (\Exception $e) {
+            Log::error('Failed to find client by email', [
+                'email' => $email,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
     }
 
     public function findClientByDocument(string $documentNumber): ?Client
     {
-        return Client::where('document_number', $documentNumber)->first();
+        try {
+            return Client::where('document_number', $documentNumber)->first();
+        } catch (\Exception $e) {
+            Log::error('Failed to find client by document', [
+                'document_number' => $documentNumber,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
     }
 }
