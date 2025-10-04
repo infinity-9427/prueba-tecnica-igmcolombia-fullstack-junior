@@ -8,6 +8,7 @@ export interface User {
   roles?: Array<{
     name: string
   }>
+  role?: string // Direct role field
 }
 
 export interface AuthResponse {
@@ -27,33 +28,89 @@ export interface RegisterData {
   email: string
   password: string
   password_confirmation: string
+  role: string
+}
+
+// Secure token storage utility
+class TokenStorage {
+  private static readonly TOKEN_KEY = 'auth_token'
+  private static readonly USER_KEY = 'auth_user'
+
+  static setToken(token: string): void {
+    try {
+      localStorage.setItem(this.TOKEN_KEY, token)
+    } catch (error) {
+      console.warn('Failed to store auth token:', error)
+    }
+  }
+
+  static getToken(): string | null {
+    try {
+      return localStorage.getItem(this.TOKEN_KEY)
+    } catch (error) {
+      console.warn('Failed to retrieve auth token:', error)
+      return null
+    }
+  }
+
+  static setUser(user: User): void {
+    try {
+      localStorage.setItem(this.USER_KEY, JSON.stringify(user))
+    } catch (error) {
+      console.warn('Failed to store user data:', error)
+    }
+  }
+
+  static getUser(): User | null {
+    try {
+      const userData = localStorage.getItem(this.USER_KEY)
+      return userData ? JSON.parse(userData) : null
+    } catch (error) {
+      console.warn('Failed to retrieve user data:', error)
+      return null
+    }
+  }
+
+  static clear(): void {
+    try {
+      localStorage.removeItem(this.TOKEN_KEY)
+      localStorage.removeItem(this.USER_KEY)
+    } catch (error) {
+      console.warn('Failed to clear auth data:', error)
+    }
+  }
 }
 
 export const useUserStore = defineStore('user', () => {
-  // Essential state only
-  const currentUser = ref<User | null>(null)
-  const token = ref<string | null>(localStorage.getItem('auth_token'))
+  // Initialize state from storage
+  const currentUser = ref<User | null>(TokenStorage.getUser())
+  const token = ref<string | null>(TokenStorage.getToken())
   const authLoading = ref(false)
   const authError = ref<string | null>(null)
 
   // Essential getters
   const isAuthenticated = computed(() => !!token.value && !!currentUser.value)
   const userId = computed(() => currentUser.value?.id || null)
-  const userRole = computed(() => currentUser.value?.roles?.[0]?.name || 'user')
+  const userRole = computed(() => {
+    if (!currentUser.value) return 'user'
+    // Handle both role formats: direct role field or roles array
+    return currentUser.value.role || currentUser.value.roles?.[0]?.name || 'user'
+  })
   const canManageAll = computed(() => ['admin', 'manager'].includes(userRole.value))
 
   // Essential actions
   const setAuth = (user: User, authToken: string) => {
     currentUser.value = user
     token.value = authToken
-    localStorage.setItem('auth_token', authToken)
+    TokenStorage.setToken(authToken)
+    TokenStorage.setUser(user)
     authError.value = null
   }
 
   const clearAuth = () => {
     currentUser.value = null
     token.value = null
-    localStorage.removeItem('auth_token')
+    TokenStorage.clear()
     authError.value = null
   }
 
@@ -63,6 +120,17 @@ export const useUserStore = defineStore('user', () => {
 
   const setAuthError = (error: string | null) => {
     authError.value = error
+  }
+
+  // Initialize auth on store creation
+  const initializeAuth = () => {
+    const storedToken = TokenStorage.getToken()
+    const storedUser = TokenStorage.getUser()
+    
+    if (storedToken && storedUser) {
+      token.value = storedToken
+      currentUser.value = storedUser
+    }
   }
 
   return {
@@ -79,6 +147,7 @@ export const useUserStore = defineStore('user', () => {
     setAuth,
     clearAuth,
     setAuthLoading,
-    setAuthError
+    setAuthError,
+    initializeAuth
   }
 })

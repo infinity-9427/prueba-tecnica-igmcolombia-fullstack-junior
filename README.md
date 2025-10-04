@@ -1,27 +1,31 @@
 # 🧾 Invoice Management System
 
-Full-stack invoice management application built with **Vue.js 3** frontend and **Laravel 11** backend. Features modern architecture, JWT authentication, role-based permissions, and complete invoice lifecycle management.
+Full-stack invoice management application built with **Vue.js 3** frontend and **Laravel 12** backend. Features modern architecture, JWT authentication, role-based permissions, automatic PDF generation, and Cloudflare R2 cloud storage integration.
 
 ## 🚀 **Project Overview**
 
-Complete invoice management solution with separate frontend and backend applications, designed for scalability and maintainability.
+Complete invoice management solution with separate frontend and backend applications, designed for scalability and maintainability. Features automatic PDF generation with cloud storage and role-based access control.
 
-### **Frontend (Vue.js 3)**
-- ⚡ **Vue 3** with Composition API
-- 🎨 **TailwindCSS** for styling  
+### **Frontend (Vue.js 3 + TypeScript)**
+- ⚡ **Vue 3** with Composition API and TypeScript
+- 🎨 **TailwindCSS** + **PrimeVue** for modern UI/UX
 - 🛣️ **Vue Router** for navigation
 - 📦 **Pinia** for state management
-- ✅ **Vee-Validate** for form validation
+- ✅ **Vee-Validate** + **Yup** for form validation
 - 🌐 **Axios** for API communication
-- 📱 **Responsive design** with mobile support
+- 📱 **Responsive design** with 1440px max-width layout
+- 🎯 **Beautiful toast notifications** with animations
+- 🔧 **Development tools**: Vite, Vue DevTools
 
-### **Backend (Laravel 11)**
+### **Backend (Laravel 12)**
 - 🏗️ **Modular architecture** with services & interfaces
 - 🔐 **Laravel Sanctum** JWT authentication
-- 👥 **Role-based authorization** (admin/user)
-- 🗄️ **PostgreSQL 12** database
+- 👥 **Role-based authorization** (admin/client)
+- 🗄️ **PostgreSQL 15** database
 - 📦 **Docker** containerized environment
 - ⚡ **Redis** caching & sessions
+- ☁️ **Cloudflare R2** S3-compatible cloud storage
+- 📄 **DomPDF** automatic PDF generation
 - 📝 **Comprehensive logging**
 - 🛠️ **Artisan commands** for CLI management
 
@@ -32,15 +36,18 @@ Complete invoice management solution with separate frontend and backend applicat
 ### **Core Functionality**
 - ✅ **Authentication & Authorization**
   - User registration/login with JWT tokens
-  - Role-based access control (admin/user)
+  - Role-based access control (admin/client)
   - Protected routes and API endpoints
+  - Secure token storage with auto-refresh
 
 - ✅ **Invoice Management**
   - Create, edit, view, and delete invoices
   - Multi-item invoices with tax calculations
   - Invoice status tracking (pending/paid/overdue)
-  - File attachments (PDF, images)
+  - **Automatic PDF generation** on invoice create/update
+  - **Cloudflare R2 cloud storage** for PDFs
   - Advanced filtering and sorting
+  - Role-based access (admin: all features, client: create only)
 
 - ✅ **Client Management**
   - Complete client information management
@@ -50,6 +57,35 @@ Complete invoice management solution with separate frontend and backend applicat
 - ✅ **User Management** (Admin only)
   - User creation and role management
   - User activity monitoring
+
+### **Cloud Storage & PDF Features**
+- ✅ **Automatic PDF Generation**
+  - PDFs automatically generated when invoices are created/updated
+  - Professional invoice templates with company branding
+  - Background queue processing for performance
+  - Generated using DomPDF library
+
+- ✅ **Cloudflare R2 Integration**
+  - S3-compatible cloud storage for all invoice PDFs
+  - Secure file access with proper authentication
+  - Automatic file organization by date and invoice
+  - Cost-effective storage with global CDN access
+  - Environment-based configuration for multiple environments
+
+### **Role-Based Access Control**
+- ✅ **Admin Users (Full Access)**
+  - Create, read, update, delete all invoices
+  - Manage all clients and users
+  - Access to all system features
+  - View all invoices from all users
+  - User management and role assignment
+
+- ✅ **Client Users (Limited Access)**
+  - Create new invoices only
+  - View only their own invoices
+  - Manage their own client information
+  - Cannot delete invoices or access admin features
+  - Cannot manage other users
 
 ### **Advanced Features**
 - 🔍 **Advanced Search & Filters**
@@ -110,42 +146,62 @@ cd invoice-vue-laravel
 ```
 
 ### **2. Environment Setup**
-```bash
-# Copy environment file (it's already configured with defaults)
-cp .env.example .env
 
-# Or customize your environment
+The project includes a comprehensive `.env` file with all necessary configuration:
+
+```bash
+# The .env file is already configured with:
+# - Database credentials (PostgreSQL)
+# - Redis configuration
+# - Cloudflare R2 storage settings
+# - Docker container configuration
+# - Health check settings
+
+# Optional: customize your environment
 nano .env
 ```
 
-> **📝 Note**: The `.env` file contains all Docker configuration. You can modify ports, memory limits, database credentials, and other settings as needed.
+> **📝 Note**: The `.env` file contains all Docker and application configuration. You can modify ports, memory limits, database credentials, and other settings as needed.
 
-**Key Benefits:**
-- ✅ **Centralized configuration** - All settings in one place
-- ✅ **Environment-specific values** - Different configs for dev/staging/production
-- ✅ **No hardcoded values** - Easy to change ports, credentials, memory limits
-- ✅ **Default fallbacks** - Works without .env file using sensible defaults
-- ✅ **Security** - Sensitive values in .env file, not in repository
+**Key Configuration Sections:**
+- ✅ **Application Settings** - Environment, debug mode, auto-migration
+- ✅ **Database Configuration** - PostgreSQL connection and performance tuning
+- ✅ **Redis Setup** - Caching and session management
+- ✅ **Cloudflare R2** - Cloud storage credentials and bucket configuration
+- ✅ **Container Limits** - Memory and resource allocation
+- ✅ **Health Checks** - Service monitoring and startup validation
+- ✅ **Network Configuration** - Docker networking and ports
 
-### **3. Setup Backend**
+### **3. Setup Backend (Docker)**
 ```bash
 cd backend/
 
-# Start Docker services (with automatic migrations)
+# Start all Docker services (database, redis, app, nginx)
 docker-compose up --build -d
 
-# The container will automatically:
+# The containers will automatically:
+# - Start PostgreSQL database with optimized settings
+# - Start Redis for caching and sessions
 # - Wait for database connection
-# - Run migrations
-# - Cache configuration
-# - Start PHP-FPM
+# - Run Laravel migrations (when AUTO_MIGRATE=true)
+# - Cache Laravel configuration
+# - Start PHP-FPM and Nginx
 
-# Optional: Seed sample data
+# Verify all services are running
+docker-compose ps
+
+# Optional: Seed sample data (includes admin and test users)
 docker-compose exec app php artisan db:seed
 
 # Verify API health
 curl http://localhost:8000/api/health
 ```
+
+**Docker Services:**
+- 🐘 **PostgreSQL 15** (port 5432) - Main database
+- 🔴 **Redis** (port 6379) - Caching and sessions  
+- 🐘 **Laravel App** - PHP 8.3 with automatic migrations
+- 🌐 **Nginx** (port 8000) - Web server and reverse proxy
 
 > **Note**: Migrations run automatically on container startup when `AUTO_MIGRATE=true` (default). This ensures the database is always ready without manual intervention.
 
@@ -156,28 +212,55 @@ cd frontend/
 # Install dependencies
 pnpm install
 
-# Start development server
+# Start development server with hot reload
 pnpm dev
+
+# Or build for production
+pnpm build
+
+# Preview production build
+pnpm preview
+
+# Type checking
+pnpm type-check
 ```
 
+**Frontend Development Stack:**
+- ⚡ **Vite** - Fast build tool and dev server
+- 🔧 **TypeScript** - Type safety and better DX
+- 🎨 **Tailwind CSS** - Utility-first CSS framework
+- 🎯 **PrimeVue** - Modern Vue.js UI component library
+- 📱 **Responsive Design** - Mobile-first with 1440px max-width
+
 ### **5. Access Applications**
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000/api
-- **Database**: localhost:5432 (postgres/secret)
+- **Frontend**: http://localhost:5173 (Vue.js app)
+- **Backend API**: http://localhost:8000/api (Laravel API)
+- **Database**: localhost:5432 (PostgreSQL - postgres/secret)
+- **Redis**: localhost:6379 (Cache and sessions)
 
 ---
 
 ## 🔑 **Default Credentials**
 
-### **Admin User**
+### **Admin User (Full System Access)**
 - **Email**: admin@invoice.com
 - **Password**: password123
-- **Role**: admin (full access)
+- **Role**: admin
+- **Permissions**: 
+  - Create, read, update, delete all invoices
+  - Manage all clients and users
+  - Access admin panel and user management
+  - View system-wide statistics and reports
 
-### **Regular User**
+### **Client User (Limited Access)**
 - **Email**: user@invoice.com  
 - **Password**: password123
-- **Role**: user (limited access)
+- **Role**: client
+- **Permissions**:
+  - Create new invoices only
+  - View only their own invoices
+  - Manage their own client information
+  - Cannot delete invoices or access admin features
 
 ---
 
@@ -211,7 +294,7 @@ tax_amount, total_amount, timestamps
 
 ---
 
-## 🛠️ **API Documentation**
+## 🛠️ **API Documentation & Testing**
 
 ### **Authentication Endpoints**
 ```bash
@@ -220,6 +303,110 @@ POST   /api/auth/login         # User login
 POST   /api/auth/logout        # User logout
 GET    /api/auth/me            # Get current user
 POST   /api/auth/refresh       # Refresh token
+```
+
+### **📋 Curl API Examples**
+
+#### **User Registration**
+```bash
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "password123",
+    "password_confirmation": "password123",
+    "role": "client"
+  }'
+```
+
+#### **User Login**
+```bash
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "email": "admin@invoice.com",
+    "password": "password123"
+  }'
+```
+
+#### **Get Current User**
+```bash
+curl -X GET http://localhost:8000/api/auth/me \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Accept: application/json"
+```
+
+#### **Create Invoice (with automatic PDF generation)**
+```bash
+curl -X POST http://localhost:8000/api/invoices \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "client_id": 1,
+    "description": "Web Development Services",
+    "issue_date": "2025-01-15",
+    "due_date": "2025-02-15",
+    "items": [
+      {
+        "name": "Frontend Development",
+        "quantity": 40,
+        "unit_price": 50.00,
+        "tax_rate": 19.00
+      },
+      {
+        "name": "Backend API Development",
+        "quantity": 30,
+        "unit_price": 60.00,
+        "tax_rate": 19.00
+      }
+    ]
+  }'
+```
+
+#### **Get Invoice (includes PDF download URL)**
+```bash
+curl -X GET http://localhost:8000/api/invoices/1 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Accept: application/json"
+```
+
+#### **List Invoices with Filters**
+```bash
+# Get all invoices (admin only)
+curl -X GET "http://localhost:8000/api/invoices?status=pending&limit=10" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Accept: application/json"
+
+# Client users only see their own invoices
+curl -X GET "http://localhost:8000/api/invoices" \
+  -H "Authorization: Bearer CLIENT_JWT_TOKEN" \
+  -H "Accept: application/json"
+```
+
+#### **Create Client**
+```bash
+curl -X POST http://localhost:8000/api/clients \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "first_name": "Jane",
+    "last_name": "Smith",
+    "email": "jane.smith@example.com",
+    "phone": "+1234567890",
+    "document_type": "cedula",
+    "document_number": "12345678"
+  }'
+```
+
+#### **Health Check**
+```bash
+curl -X GET http://localhost:8000/api/health \
+  -H "Accept: application/json"
 ```
 
 ### **Invoice Endpoints**
@@ -252,11 +439,27 @@ DELETE /api/users/{id}         # Delete user
 PATCH  /api/users/{id}/role    # Update user role
 ```
 
-### **File Upload Endpoints**
+### **Cloudflare R2 Storage Endpoints**
 ```bash
-POST   /api/files/upload/invoice-attachment    # Upload file
-GET    /api/files/download/invoice-attachment/{filename} # Download file
-DELETE /api/files/delete/invoice-attachment    # Delete file
+# Note: PDF files are automatically generated and stored in R2
+# when invoices are created or updated. Manual file uploads
+# for additional attachments:
+
+POST   /api/files/upload/invoice-attachment    # Upload additional files
+GET    /api/files/download/invoice-attachment/{filename} # Download files
+DELETE /api/files/delete/invoice-attachment    # Delete files
+
+# Automatic PDF storage paths in R2:
+# invoices/invoice_{invoice_number}_{date}_{unique_id}.pdf
+```
+
+#### **PDF Download Example**
+```bash
+# Download automatically generated PDF
+curl -X GET "http://localhost:8000/api/invoices/1/pdf" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Accept: application/pdf" \
+  --output "invoice_1.pdf"
 ```
 
 ---
@@ -382,34 +585,58 @@ pnpm test:e2e
 | **db** | PostgreSQL 15 | 5432 |
 | **redis** | Cache & sessions | 6379 |
 
-### **🐳 Docker Optimizations**
+### **🐳 Docker Setup & Architecture**
 
-The Dockerfile has been optimized following modern best practices:
+The project uses a multi-container Docker setup optimized for development and production:
 
-#### **Multi-stage Build**
+#### **Container Architecture**
+```
+┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │     Backend     │
+│  (Vue.js SPA)   │    │  (Laravel API)  │
+│  Port: 5173     │    │                 │
+└─────────────────┘    └─────────────────┘
+                              │
+                    ┌─────────────────┐
+                    │     Nginx       │
+                    │   Port: 8000    │
+                    └─────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     │                     │
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   PostgreSQL    │    │      Redis      │    │  Cloudflare R2  │
+│   Port: 5432    │    │   Port: 6379    │    │  (Cloud Storage) │
+│   (Database)    │    │   (Cache)       │    │   (PDF Files)   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+#### **Docker Optimizations**
+
+**Multi-stage Build**
 - **Builder stage**: Installs dependencies and builds the application
 - **Production stage**: Creates minimal runtime image with only necessary components
 - **Size reduction**: ~60% smaller final image compared to single-stage builds
 
-#### **Security Enhancements**
+**Security Enhancements**
 - ✅ **Non-root user**: Application runs as `appuser` for security
 - ✅ **Minimal attack surface**: Only runtime dependencies in final image
 - ✅ **Layer optimization**: Combined RUN commands reduce layers and vulnerabilities
 - ✅ **Latest base images**: PHP 8.3-fpm with security updates
 
-#### **Performance Features**
+**Performance Features**
 - ✅ **OPcache enabled**: Pre-compiled PHP for faster execution
 - ✅ **Composer optimization**: `--classmap-authoritative` for production
 - ✅ **Layer caching**: Dependencies installed before copying source code
 - ✅ **Configuration caching**: Laravel config/routes/views cached on startup
 
-#### **Automatic Database Migrations**
+**Automatic Database Migrations**
 - ✅ **Smart startup**: Waits for database connectivity before starting
 - ✅ **Auto-migration**: Runs `php artisan migrate --force` when `AUTO_MIGRATE=true`
 - ✅ **Zero-downtime**: No manual intervention required for database setup
 - ✅ **Production-safe**: Can be disabled by setting `AUTO_MIGRATE=false`
 
-#### **Health Monitoring & Error Handling**
+**Health Monitoring & Error Handling**
 - ✅ **FastCGI health check**: Monitors PHP-FPM process health
 - ✅ **Database connectivity**: Ensures database connection before app startup
 - ✅ **Connection timeout**: 60-second timeout with retry logic (30 attempts)
@@ -428,6 +655,20 @@ APP_ENV=production              # Application environment
 APP_DEBUG=false                 # Debug mode (set to true for development)
 AUTO_MIGRATE=true              # Automatic database migrations on startup
 ```
+
+#### **☁️ Cloudflare R2 Configuration**
+```bash
+# S3-Compatible Cloud Storage for PDFs
+CLOUDFLARE_R2_ACCESS_KEY_ID=your_access_key
+CLOUDFLARE_R2_SECRET_ACCESS_KEY=your_secret_key
+CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+CLOUDFLARE_R2_BUCKET=invoices
+CLOUDFLARE_R2_URL=https://your-account-id.r2.cloudflarestorage.com
+CLOUDFLARE_R2_DEFAULT_REGION=auto
+FILESYSTEM_DISK=r2
+```
+
+> **🔐 Security Note**: The provided R2 credentials in the .env file are for development only. Replace with your own Cloudflare R2 credentials for production use.
 
 #### **🗄️ Database Configuration**
 ```bash
@@ -493,11 +734,11 @@ DOCKER_SUBNET=172.20.0.0/16
 
 ---
 
-## 🔧 **Development**
+## 🔧 **Development Workflow**
 
 ### **Backend Development**
 ```bash
-# Access Laravel container
+# Access Laravel container for development
 docker-compose exec app bash
 
 # Run migrations
@@ -509,8 +750,19 @@ php artisan make:migration create_example_table
 # Create new controller
 php artisan make:controller ExampleController
 
-# Run tinker
+# Test PDF generation manually
 php artisan tinker
+>>> $invoice = App\Models\Invoice::find(1);
+>>> $pdfService = new App\Services\InvoicePdfService();
+>>> $pdfService->generatePdf($invoice);
+
+# View Laravel logs
+docker-compose exec app tail -f storage/logs/laravel.log
+
+# Clear application cache
+php artisan cache:clear
+php artisan config:clear
+php artisan route:clear
 ```
 
 ### **Frontend Development**
@@ -518,14 +770,43 @@ php artisan tinker
 # Install new package
 pnpm add package-name
 
+# Development with hot reload
+pnpm dev
+
 # Build for production
 pnpm build
 
 # Preview production build
 pnpm preview
 
-# Type check
+# Type check all files
 pnpm type-check
+
+# Lint and format code
+npm run lint
+```
+
+### **Testing PDF Generation**
+```bash
+# Create a test invoice via API to trigger PDF generation
+curl -X POST http://localhost:8000/api/invoices \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": 1,
+    "description": "Test Invoice",
+    "issue_date": "2025-01-15",
+    "due_date": "2025-02-15",
+    "items": [{
+      "name": "Test Service",
+      "quantity": 1,
+      "unit_price": 100.00,
+      "tax_rate": 19.00
+    }]
+  }'
+
+# Check if PDF was generated in R2 storage
+# PDFs are stored as: invoices/invoice_{number}_{date}_{id}.pdf
 ```
 
 ---
@@ -604,33 +885,54 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 👨‍💻 **Technical Requirements Met**
+## 👨‍💻 **Technical Stack & Features**
 
-### **Backend Requirements** ✅
-- ✅ Modular architecture with services
-- ✅ JWT authentication with Laravel Sanctum
-- ✅ Complete CRUD endpoints for invoices, clients, users
-- ✅ Role-based authorization system
-- ✅ Advanced filtering and sorting
-- ✅ Database migrations (no SQL files)
-- ✅ Data validation and business logic
-- ✅ Artisan command with business logic
-- ✅ Redis caching implementation
-- ✅ Comprehensive event logging
-- ✅ Database seeders for setup
+### **Backend (Laravel 12) Features** ✅
+- ✅ **Modular architecture** with services and interfaces
+- ✅ **JWT authentication** with Laravel Sanctum
+- ✅ **Complete CRUD endpoints** for invoices, clients, users
+- ✅ **Role-based authorization** (admin/client permissions)
+- ✅ **Advanced filtering and sorting** with query builders
+- ✅ **Database migrations** (no SQL files)
+- ✅ **Data validation** and business logic
+- ✅ **Artisan commands** with business logic
+- ✅ **Redis caching** implementation
+- ✅ **Comprehensive event logging**
+- ✅ **Database seeders** for setup
+- ✅ **DomPDF integration** for automatic PDF generation
+- ✅ **Cloudflare R2** S3-compatible storage
+- ✅ **Observer pattern** for automatic PDF creation
+- ✅ **Docker containerization** with health checks
 
-### **Frontend Requirements** ✅
-- ✅ Vue Router for navigation
-- ✅ Pinia for state management
-- ✅ Login and registration screens
-- ✅ Invoice listing with filters and pagination
-- ✅ Invoice create/edit forms
-- ✅ Invoice detail screens
-- ✅ Client listing with filters and pagination
-- ✅ Client update forms
-- ✅ User listing with filters and pagination
-- ✅ Vee-Validate for form validation
-- ✅ Axios for API communication
+### **Frontend (Vue.js 3 + TypeScript) Features** ✅
+- ✅ **Vue Router** for client-side navigation
+- ✅ **Pinia** for state management with persistence
+- ✅ **TypeScript** for type safety and better DX
+- ✅ **PrimeVue** modern UI component library
+- ✅ **Login and registration** screens with validation
+- ✅ **Invoice listing** with filters and pagination
+- ✅ **Invoice create/edit** forms with multi-item support
+- ✅ **Invoice detail** screens with PDF download
+- ✅ **Client listing** with filters and pagination
+- ✅ **Client update** forms with validation
+- ✅ **User listing** with filters and pagination (admin only)
+- ✅ **Vee-Validate + Yup** for form validation
+- ✅ **Axios** for API communication
+- ✅ **Beautiful toast notifications** with animations
+- ✅ **Responsive design** with 1440px max-width layout
+- ✅ **Role-based UI** (admin vs client views)
+
+### **Technology Highlights**
+- 🐘 **PHP 8.3** with modern Laravel 12 features
+- ⚡ **Vue.js 3** with Composition API and TypeScript
+- 🗄️ **PostgreSQL 15** with performance optimizations
+- 🔴 **Redis** for caching and session management
+- ☁️ **Cloudflare R2** for scalable cloud storage
+- 📄 **DomPDF** for professional invoice PDFs
+- 🐳 **Docker** with multi-stage builds and health checks
+- 🎨 **TailwindCSS + PrimeVue** for modern UI/UX
+- 🔐 **JWT authentication** with secure token management
+- 📱 **Mobile-first responsive design**
 
 ---
 

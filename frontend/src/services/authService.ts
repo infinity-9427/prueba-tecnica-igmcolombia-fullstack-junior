@@ -6,37 +6,63 @@ import type {
   RegisterData 
 } from '@/stores/userStore'
 
+// Backend API response format
+interface BackendAuthResponse {
+  success: boolean
+  message: string
+  data: {
+    user: User
+    token: string
+    token_type: string
+    expires_in?: string | null
+  }
+}
+
 export class AuthService {
   /**
    * Login user with credentials
    */
   static async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/login', credentials)
-    return response.data
+    const response = await api.post<BackendAuthResponse>('/auth/login', credentials)
+    
+    // Transform backend response to frontend format
+    return {
+      message: response.data.message,
+      user: response.data.data.user,
+      token: response.data.data.token,
+      token_type: response.data.data.token_type
+    }
   }
 
   /**
    * Register new user
    */
   static async register(userData: RegisterData): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/register', userData)
-    return response.data
+    const response = await api.post<BackendAuthResponse>('/auth/register', userData)
+    
+    // Transform backend response to frontend format
+    return {
+      message: response.data.message,
+      user: response.data.data.user,
+      token: response.data.data.token,
+      token_type: response.data.data.token_type
+    }
   }
 
   /**
    * Logout current user
    */
   static async logout(): Promise<{ message: string }> {
-    const response = await api.post<{ message: string }>('/auth/logout')
-    return response.data
+    const response = await api.post<{ success: boolean; message: string }>('/auth/logout')
+    return { message: response.data.message }
   }
 
   /**
    * Get current authenticated user
    */
   static async me(): Promise<{ user: User }> {
-    const response = await api.get<{ user: User }>('/auth/me')
-    return response.data
+    const response = await api.get<{ success: boolean; message: string; data: { user: User } }>('/auth/me')
+    return { user: response.data.data.user }
   }
 
   /**

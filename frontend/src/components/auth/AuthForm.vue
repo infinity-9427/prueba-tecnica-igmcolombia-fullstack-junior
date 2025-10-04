@@ -13,7 +13,7 @@
 
       <!-- Form Card -->
       <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-        <form @submit="onSubmit" class="space-y-6">
+        <form @submit.prevent="onSubmit" class="space-y-6">
           <!-- Name Field (Register only) -->
           <div v-if="!isLogin" class="space-y-2">
             <label for="name" class="block text-sm font-medium text-gray-700">
@@ -216,7 +216,9 @@ import { computed, ref, watch } from 'vue'
 import { useForm, useField } from 'vee-validate'
 import * as yup from 'yup'
 import { Icon } from '@iconify/vue'
-import { AuthFormType, type LoginData, type RegisterData, UserRole } from '@/types/auth'
+import { AuthFormType } from '@/types/auth'
+import { useAuth } from '@/composables/useAuth'
+import type { LoginCredentials, RegisterData } from '@/stores/userStore'
 
 interface Props {
   formType: AuthFormType
@@ -304,18 +306,21 @@ watch(() => props.formType, (newType, oldType) => {
     showPassword.value = false
     showConfirmPassword.value = false
     
-    // Properly reset the entire form including validation state
-    resetForm({
-      values: {
-        name: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        role: ''
-      },
-      errors: {}, // Clear all errors
-      touched: {} // Clear all touched states
-    })
+    // Only reset form if not currently submitting
+    if (!isSubmitting.value) {
+      // Properly reset the entire form including validation state
+      resetForm({
+        values: {
+          name: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          role: ''
+        },
+        errors: {}, // Clear all errors
+        touched: {} // Clear all touched states
+      })
+    }
   }
 }, { immediate: false })
 
@@ -351,24 +356,53 @@ const isFormValid = computed(() => {
          !roleError.value
 })
 
+const { login, register } = useAuth()
+
 const onSubmit = handleSubmit(async (values: any) => {
+  if (isSubmitting.value) return // Prevent double submission
+  
   isSubmitting.value = true
   
   try {
-    const formData: LoginData | RegisterData = isLogin.value 
-      ? { 
-          email: values.email, 
-          password: values.password 
-        } as LoginData
-      : { 
-          name: values.name, 
-          email: values.email, 
-          password: values.password,
-          confirmPassword: values.confirmPassword,
-          role: values.role
-        } as RegisterData
+    let success = false
     
-    // TODO: Implement actual API calls here
+    if (isLogin.value) {
+      const loginData: LoginCredentials = {
+        email: values.email,
+        password: values.password
+      }
+      
+      success = await login(loginData)
+    } else {
+      const registerData: RegisterData = {
+        name: values.name,
+        email: values.email,
+        password: values.password,
+        password_confirmation: values.confirmPassword,
+        role: values.role
+      }
+      
+      success = await register(registerData)
+    }
+    
+    // Only reset form on successful authentication
+    if (success) {
+      resetForm({
+        values: {
+          name: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          role: ''
+        },
+        errors: {},
+        touched: {}
+      })
+    }
+    // If not successful, keep form data for user to retry
+    
+  } catch (error) {
+    console.error('Authentication error:', error)
   } finally {
     isSubmitting.value = false
   }

@@ -4,6 +4,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
+import ToastService from 'primevue/toastservice'
 import App from './App.vue'
 import router from '@/router/index'
 
@@ -17,12 +18,14 @@ import Button from 'primevue/button'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Tag from 'primevue/tag'
+import Toast from 'primevue/toast'
 
 const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
 app.use(router)
+app.use(ToastService)
 app.use(PrimeVue, {
   theme: {
     preset: Aura,
@@ -44,5 +47,6 @@ app.component('Button', Button)
 app.component('IconField', IconField)
 app.component('InputIcon', InputIcon)
 app.component('Tag', Tag)
+app.component('Toast', Toast)
 
 app.mount('#app')

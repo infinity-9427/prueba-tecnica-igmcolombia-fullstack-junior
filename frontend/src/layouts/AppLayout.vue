@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
     <!-- Navigation Header -->
     <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
           <!-- Logo and Brand -->
           <div class="flex items-center">
@@ -40,10 +40,9 @@
             <div v-if="isAuthenticated" class="relative">
               <!-- Desktop User Menu -->
               <div class="hidden sm:flex items-center">
-                <Button
+                <button
                   @click="toggleUserMenu"
-                  variant="text"
-                  class="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                  class="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <div class="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                     <Icon icon="mdi:account" class="h-5 w-5 text-white" />
@@ -54,20 +53,19 @@
                   </div>
                   <Icon icon="mdi:chevron-down" class="h-4 w-4 text-gray-500 transition-transform duration-200" 
                         :class="{ 'rotate-180': showUserMenu }" />
-                </Button>
+                </button>
               </div>
 
               <!-- Mobile User Avatar -->
               <div class="sm:hidden">
-                <Button
+                <button
                   @click="toggleUserMenu"
-                  variant="text"
-                  class="flex items-center p-2 rounded-lg hover:bg-gray-100"
+                  class="flex items-center p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <div class="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                     <Icon icon="mdi:account" class="h-5 w-5 text-white" />
                   </div>
-                </Button>
+                </button>
               </div>
 
               <!-- User Dropdown Menu -->
@@ -107,14 +105,6 @@
                   <!-- Menu Items -->
                   <div class="py-1">
                     <button
-                      @click="handleProfile"
-                      class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
-                    >
-                      <Icon icon="mdi:account-cog" class="w-4 h-4 mr-3 text-gray-400" />
-                      Profile Settings
-                    </button>
-                    
-                    <button
                       v-if="canManageAll"
                       @click="handleAdmin"
                       class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
@@ -123,7 +113,7 @@
                       Admin Panel
                     </button>
 
-                    <div class="border-t border-gray-100 my-1"></div>
+                    <div v-if="canManageAll" class="border-t border-gray-100 my-1"></div>
                     
                     <button
                       @click="handleLogout"
@@ -151,13 +141,12 @@
 
             <!-- Mobile menu button -->
             <div class="md:hidden" v-if="isAuthenticated">
-              <Button
+              <button
                 @click="toggleMobileMenu"
-                variant="text"
                 class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
               >
                 <Icon :icon="showMobileMenu ? 'mdi:close' : 'mdi:menu'" class="h-6 w-6" />
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -194,7 +183,7 @@
 
     <!-- Main content -->
     <main class="flex-1">
-      <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div class="max-w-7xl xl:max-w-[1440px] mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <router-view />
       </div>
     </main>
@@ -202,15 +191,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
+import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
-const router = useRouter()
+const { 
+  isAuthenticated, 
+  currentUser, 
+  userRole, 
+  canManageAll, 
+  loading, 
+  logout: authLogout,
+  initializeAuth 
+} = useAuth()
 
 const showUserMenu = ref(false)
 const showMobileMenu = ref(false)
+
+// Initialize authentication on mount
+onMounted(() => {
+  initializeAuth()
+})
 
 const navigation = [
   { name: 'Invoices', href: '/app/invoices', icon: 'mdi:receipt' },
@@ -218,14 +221,47 @@ const navigation = [
   { name: 'Users', href: '/app/users', icon: 'mdi:account-multiple' }
 ]
 
+// Filter navigation based on user permissions
+const visibleNavigation = computed(() => {
+  if (!isAuthenticated.value) return []
+  
+  // Admin can see all navigation items
+  if (canManageAll.value) {
+    return navigation
+  }
+  
+  // Regular users can only see invoices and clients
+  return navigation.filter(item => item.name !== 'Users')
+})
+
 const isCurrentRoute = (href: string) => {
   return route.path.startsWith(href)
 }
 
-const logout = () => {
-  // TODO: Implement logout logic
-  router.push('/')
+const toggleUserMenu = () => {
+  showUserMenu.value = !showUserMenu.value
+}
+
+const closeUserMenu = () => {
   showUserMenu.value = false
+}
+
+const toggleMobileMenu = () => {
+  showMobileMenu.value = !showMobileMenu.value
+}
+
+const closeMobileMenu = () => {
+  showMobileMenu.value = false
+}
+
+const handleLogout = async () => {
+  await authLogout()
+  closeUserMenu()
+}
+
+const handleAdmin = () => {
+  // TODO: Implement admin panel
+  closeUserMenu()
 }
 
 // Click outside directive
