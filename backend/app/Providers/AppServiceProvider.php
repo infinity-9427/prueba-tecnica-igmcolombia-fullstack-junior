@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Interfaces\ClientServiceInterface;
 use App\Interfaces\InvoiceServiceInterface;
 use App\Interfaces\UserServiceInterface;
+use App\Models\Invoice;
+use App\Observers\InvoiceObserver;
 use App\Services\ClientService;
 use App\Services\InvoiceService;
 use App\Services\UserService;
@@ -27,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register Invoice observer for automatic PDF generation
+        Invoice::observe(InvoiceObserver::class);
     }
 }

@@ -26,6 +26,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus']);
     Route::get('invoices-recent', [InvoiceController::class, 'recent']);
     
+    // PDF-related routes
+    Route::get('invoices/{invoice}/pdf/download', [InvoiceController::class, 'downloadPdf']);
+    Route::post('invoices/{invoice}/pdf/regenerate', [InvoiceController::class, 'regeneratePdf']);
+    Route::get('invoices/{invoice}/pdf/info', [InvoiceController::class, 'getPdfInfo']);
+    
     Route::apiResource('users', UserController::class);
     Route::patch('users/{user}/role', [UserController::class, 'updateRole']);
     

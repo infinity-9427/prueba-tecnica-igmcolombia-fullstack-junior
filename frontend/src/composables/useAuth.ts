@@ -70,7 +70,7 @@ export function useAuth() {
       console.warn('Logout API failed:', error)
     } finally {
       userStore.clearAuth()
-      await router.push('/login')
+      await router.push('/')
     }
   }
 

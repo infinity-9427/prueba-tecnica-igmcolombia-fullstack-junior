@@ -30,6 +30,7 @@ services:
       - AUTO_MIGRATE=${AUTO_MIGRATE:-true}
       - APP_ENV=${APP_ENV:-production}
       - APP_DEBUG=${APP_DEBUG:-false}
+      - FILESYSTEM_DISK=${FILESYSTEM_DISK:-local}
     healthcheck:
       test: ["CMD", "/usr/local/bin/healthcheck.sh"]
       interval: ${APP_HEALTHCHECK_INTERVAL:-30s}

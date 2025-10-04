@@ -22,6 +22,7 @@ class Invoice extends Model
         'total_amount',
         'status',
         'attachment_path',
+        'archivo_generado_path',
     ];
 
     protected $casts = [
@@ -59,5 +60,50 @@ class Invoice extends Model
     public function isPending(): bool
     {
         return $this->status === 'pending';
+    }
+
+    /**
+     * Get the PDF URL if it exists
+     */
+    public function getPdfUrl(): ?string
+    {
+        if ($this->archivo_generado_path) {
+            $disk = config('filesystems.default', 'local');
+            return \Storage::disk($disk)->url($this->archivo_generado_path);
+        }
+        return null;
+    }
+
+    /**
+     * Check if PDF exists
+     */
+    public function hasPdf(): bool
+    {
+        if (!$this->archivo_generado_path) {
+            return false;
+        }
+        
+        $disk = config('filesystems.default', 'local');
+        return \Storage::disk($disk)->exists($this->archivo_generado_path);
+    }
+
+    /**
+     * Get PDF file size in human readable format
+     */
+    public function getPdfSize(): ?string
+    {
+        if (!$this->hasPdf()) {
+            return null;
+        }
+
+        $disk = config('filesystems.default', 'local');
+        $bytes = \Storage::disk($disk)->size($this->archivo_generado_path);
+        $units = ['B', 'KB', 'MB', 'GB'];
+        
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        
+        return round($bytes, 2) . ' ' . $units[$i];
     }
 }

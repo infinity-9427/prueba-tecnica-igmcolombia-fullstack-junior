@@ -7,6 +7,7 @@ use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceStatusRequest;
 use App\Interfaces\InvoiceServiceInterface;
+use App\Services\InvoicePdfService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\Log;
 class InvoiceController extends Controller
 {
     public function __construct(
-        private InvoiceServiceInterface $invoiceService
+        private InvoiceServiceInterface $invoiceService,
+        private InvoicePdfService $pdfService
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -97,6 +99,9 @@ class InvoiceController extends Controller
                 'ip' => $request->ip()
             ]);
 
+            // Refresh the invoice to get the updated PDF path from the observer
+            $invoice->refresh();
+
             return ApiResponseHelper::created(
                 'Invoice created successfully',
                 [
@@ -108,7 +113,10 @@ class InvoiceController extends Controller
                         'due_date' => $invoice->due_date,
                         'total_amount' => $invoice->total_amount,
                         'status' => $invoice->status,
-                        'created_at' => $invoice->created_at
+                        'created_at' => $invoice->created_at,
+                        'pdf_url' => $invoice->getPdfUrl(),
+                        'has_pdf' => $invoice->hasPdf(),
+                        'pdf_size' => $invoice->getPdfSize()
                     ]
                 ]
             );
@@ -395,6 +403,157 @@ class InvoiceController extends Controller
                     'ip' => request()->ip()
                 ],
                 'Failed to retrieve recent invoices due to an unexpected error'
+            );
+        }
+    }
+
+    /**
+     * Download invoice PDF
+     */
+    public function downloadPdf(int $id): JsonResponse|\Symfony\Component\HttpFoundation\Response
+    {
+        try {
+            $invoice = $this->invoiceService->getInvoiceById($id, request()->user());
+
+            if (!$invoice) {
+                return ApiResponseHelper::notFound('Invoice', $id, [
+                    'user_id' => request()->user()->id,
+                    'ip' => request()->ip()
+                ]);
+            }
+
+            $response = $this->pdfService->downloadPdf($invoice);
+
+            if (!$response) {
+                return ApiResponseHelper::error(
+                    'PDF file not found or could not be generated',
+                    500,
+                    [
+                        'invoice_id' => $id,
+                        'user_id' => request()->user()->id,
+                        'ip' => request()->ip()
+                    ]
+                );
+            }
+
+            Log::info('Invoice PDF downloaded', [
+                'invoice_id' => $id,
+                'user_id' => request()->user()->id,
+                'ip' => request()->ip()
+            ]);
+
+            return $response;
+
+        } catch (\Exception $e) {
+            return ApiResponseHelper::unexpectedError(
+                $e,
+                [
+                    'invoice_id' => $id,
+                    'user_id' => request()->user()->id,
+                    'ip' => request()->ip()
+                ],
+                'Failed to download invoice PDF'
+            );
+        }
+    }
+
+    /**
+     * Regenerate invoice PDF
+     */
+    public function regeneratePdf(int $id): JsonResponse
+    {
+        try {
+            $invoice = $this->invoiceService->getInvoiceById($id, request()->user());
+
+            if (!$invoice) {
+                return ApiResponseHelper::notFound('Invoice', $id, [
+                    'user_id' => request()->user()->id,
+                    'ip' => request()->ip()
+                ]);
+            }
+
+            $pdfPath = $this->pdfService->regeneratePdf($invoice);
+
+            if (!$pdfPath) {
+                return ApiResponseHelper::error(
+                    'Failed to regenerate PDF',
+                    500,
+                    [
+                        'invoice_id' => $id,
+                        'user_id' => request()->user()->id,
+                        'ip' => request()->ip()
+                    ]
+                );
+            }
+
+            Log::info('Invoice PDF regenerated', [
+                'invoice_id' => $id,
+                'user_id' => request()->user()->id,
+                'pdf_path' => $pdfPath,
+                'ip' => request()->ip()
+            ]);
+
+            // Refresh the invoice to get updated data
+            $invoice->refresh();
+
+            return ApiResponseHelper::success(
+                'PDF regenerated successfully',
+                [
+                    'invoice_id' => $invoice->id,
+                    'pdf_url' => $invoice->getPdfUrl(),
+                    'has_pdf' => $invoice->hasPdf(),
+                    'pdf_size' => $invoice->getPdfSize()
+                ]
+            );
+
+        } catch (\Exception $e) {
+            return ApiResponseHelper::unexpectedError(
+                $e,
+                [
+                    'invoice_id' => $id,
+                    'user_id' => request()->user()->id,
+                    'ip' => request()->ip()
+                ],
+                'Failed to regenerate invoice PDF'
+            );
+        }
+    }
+
+    /**
+     * Get invoice PDF info
+     */
+    public function getPdfInfo(int $id): JsonResponse
+    {
+        try {
+            $invoice = $this->invoiceService->getInvoiceById($id, request()->user());
+
+            if (!$invoice) {
+                return ApiResponseHelper::notFound('Invoice', $id, [
+                    'user_id' => request()->user()->id,
+                    'ip' => request()->ip()
+                ]);
+            }
+
+            return ApiResponseHelper::success(
+                'PDF information retrieved successfully',
+                [
+                    'invoice_id' => $invoice->id,
+                    'pdf_url' => $invoice->getPdfUrl(),
+                    'has_pdf' => $invoice->hasPdf(),
+                    'pdf_size' => $invoice->getPdfSize(),
+                    'pdf_path' => $invoice->archivo_generado_path
+                ]
+            );
+
+        } catch (\Exception $e) {
+            return ApiResponseHelper::unexpectedError(
+                $e,
+                [
+                    'invoice_id' => $id,
+                    'user_id' => request()->user()->id,
+                    'ip' => request()->ip()
+                ],
+                'Failed to retrieve PDF information'
             );
         }
     }
